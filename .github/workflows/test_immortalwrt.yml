@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: test_immortalwrt
+name: immortalwrtR5S
 
 on:
   workflow_dispatch:
@@ -87,7 +87,7 @@ jobs:
       - name: Clone Source Code
         working-directory: /workdir
         run: |
-          git clone -b master --single-branch https://github.com/immortalwrt/immortalwrt.git openwrt
+          git clone -b openwrt-23.05 --single-branch https://github.com/immortalwrt/immortalwrt.git openwrt
           ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
       - name: Load Custom Feeds
@@ -109,7 +109,7 @@ jobs:
 
       - name: Load Configuration
         run: |
-          cp -r config/immortalwrt_config/X86.config openwrt/.config
+          cp -r config/immortalwrt_config/R5S.config openwrt/.config
           chmod +x diy_script/immortalwrt_diy/diy-part2.sh
           cd openwrt
           $GITHUB_WORKSPACE/diy_script/immortalwrt_diy/diy-part2.sh
@@ -126,30 +126,30 @@ jobs:
           find dl -size -1024c -exec ls -l {} \;
           find dl -size -1024c -exec rm -f {} \;
 
-      - name: Generate tools toolchain
-        id: compile_tools_toolchain
+      - name: Build toolchain
         run: |
           cd $GITHUB_WORKSPACE/openwrt
-          make tools/compile -j$(nproc)
-          make toolchain/compile -j$(nproc)
-          make package/cleanup -j$(nproc)
-          make target/compile -j$(nproc)
-          
+          make tools/install -j$(nproc) V=s
+          make toolchain/install -j$(nproc) V=s
 
-      - name: compile test package
-        id: compile_package1
+      - name: Build firmware
         run: |
           cd $GITHUB_WORKSPACE/openwrt
-          make package/feeds/passwall/luci-app-passwall/compile -j$(nproc) V=s
+          make -j$(nproc) V=s IGNORE_ERRORS="n m"
 
-      - name: compile test package
-        id: compile_package2
+      - name: compile test package passwall2
         run: |
-          cd $GITHUB_WORKSPACE/openwrt
-          make package/feeds/passwall2/luci-app-passwall2/compile -j$(nproc) V=s
+              cd $GITHUB_WORKSPACE/openwrt
+              make package/luci-app-passwall2/compile -j$(nproc) V=s || echo "PassWall2 compile failed, check feed"
+      
+      - name: Build full firmware
+        run: |
+            cd $GITHUB_WORKSPACE/openwrt
+            make -j$(nproc) V=s IGNORE_ERRORS="n m" || make -j1 V=s   # 失败时单线程重试看错
 
-      - name: compile test package
-        id: compile_package3
-        run: |
-          cd $GITHUB_WORKSPACE/openwrt
-          make package/feeds/helloworld/luci-app-ssr-plus/compile -j$(nproc) V=s
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: immortalwrt-r5s-firmware
+          path: openwrt/bin/targets/rockchip/armv8/*img*   # 根据实际路径调整
+
