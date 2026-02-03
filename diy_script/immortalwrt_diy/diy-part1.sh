@@ -47,6 +47,8 @@ done
 [ -f "$temp_file" ] && rm "$temp_file"
 
 echo "Updated feeds.conf.default"
+echo "src-git passwall2 https://github.com/Openwrt-Passwall/openwrt-passwall2.git" >> feeds.conf.default
+echo "src-git passwall_packages https://github.com/Openwrt-Passwall/openwrt-passwall-packages.git" >> feeds.conf.default
 # ---------------------------------------------------------------end feeds update---------------------------------------------------------------
 
 clone_custom_packages
